@@ -1,7 +1,11 @@
+import av
 import cv2
-import mediapipe as mp
-import numpy as np
 import joblib
+import numpy as np
+import mediapipe as mp
+from core.config import MP_MODEL_PATH, CUSTOM_MODEL_PATH, ENCODER_PATH
+from streamlit_webrtc import VideoProcessorBase
+
 
 class GestureProcessor:
     """
@@ -101,3 +105,28 @@ class GestureProcessor:
         """Releases resources."""
         if self.recognizer:
             self.recognizer.close()
+
+
+class VideoProcessor(VideoProcessorBase):
+    def __init__(self):
+        # We initialize the processor here. It runs during the factory call in the main thread.
+        self.processor = GestureProcessor(MP_MODEL_PATH, CUSTOM_MODEL_PATH, ENCODER_PATH)
+
+
+    def recv(self, frame: av.VideoFrame) -> av.VideoFrame:
+        """Process each video frame coming from the client's webcam."""
+        # Convert frame to BGR format which the processor expects
+        img = frame.to_ndarray(format="bgr24")
+
+        # Process the frame using our core logic
+        try:
+            processed_img = self.processor.process_frame(img)
+        except Exception as e:
+            # If processing fails, fallback to the original image
+            # and draw the error on it (useful for debugging)
+            processed_img = img.copy()
+            cv2.putText(processed_img, f"Error: {str(e)}", (10, 30), 
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+
+        # Return the processed frame back to the browser
+        return av.VideoFrame.from_ndarray(processed_img, format="bgr24")
