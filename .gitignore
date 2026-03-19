@@ -15,4 +15,5 @@ wheels/
 # project files
 .env
 .sesskey
-*.database
+*.databasescripts/
+.vscode/
