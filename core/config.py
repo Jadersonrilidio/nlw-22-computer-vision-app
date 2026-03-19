@@ -1,5 +1,4 @@
 import os
-from streamlit_webrtc import RTCConfiguration
 
 # Base directory of the project
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -19,8 +18,3 @@ ENCODER_PATH = os.path.join(MODELS_DIR, "label_encoder.joblib")
 WINDOW_NAME = 'Custom Gesture Recognition'
 FRAME_WIDTH = 640
 FRAME_HEIGHT = 480
-
-# Configuration for WebRTC (helpful for deployment but usually fine locally without)
-RTC_CONFIGURATION = RTCConfiguration(
-    {"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}
-)

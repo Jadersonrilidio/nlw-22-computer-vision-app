@@ -1,27 +1,41 @@
-import sys
-from core.webcam_recog import WebCamRecog
+from fasthtml.common import fast_app, serve, Titled, Video, Canvas, Script
+from starlette.responses import FileResponse
+from core.gesture_recognizer import GestureRecognizer
+from core.utils import check_models, decode_image, encode_image
 
-# run on terminal: `uv run streamlit run app.py`
-# options: ['STREAMLIT', 'TERMINAL']
-def main() -> int:
+# Pre-startup model check
+if not check_models():
+    raise Exception("Critical models missing.")
+
+app, rt = fast_app()
+recognizer = GestureRecognizer()
+
+@rt("/assets/{fname:path}")
+async def get_assets(fname:str):
+    return FileResponse(f"assets/{fname}")
+
+@rt("/")
+def get():
+    return Titled("Hand Gesture Recognition (FastHTML)",
+        Video(id="v", autoplay=True, style="display:none"),
+        Canvas(id="c", width=640, height=480),
+        Script(src="/assets/script.js")
+    )
+
+@app.ws('/ws')
+async def ws(image:str, send):
     try:
-        print("Iniciando Aplicativo de Visão Computacional...")
-
-        WebCamRecog.run(option='STREAMLIT')
-
-        return 0
-    except KeyboardInterrupt:
-        print("\nPrograma encerrado pelo usuário.")
-        return 0
-    except ImportError as e:
-        print(f"Erro de importação: {e}")
-        return 1
-    except ValueError as e:
-        print(f"Erro: {e}")
-        return 1
+        frame = decode_image(image)
+        if frame is not None:
+            processed_image = recognizer.process_frame(frame)
+            await send(encode_image(processed_image))
     except Exception as e:
-        print(f"Erro ao iniciar o aplicativo: {e}")
-        return 1
+        print(f"WS Error: {e}")
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        serve()
+    finally:
+        # Graceful shutdown of MediaPipe resources
+        print("\nShutting down resources...")
+        recognizer.close()
